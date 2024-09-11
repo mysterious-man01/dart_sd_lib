@@ -1,5 +1,6 @@
 # Miscellaneous
 *.class
+*.jpg
 *.log
 *.pyc
 *.swp
@@ -8,6 +9,7 @@
 .buildlog/
 .history
 .svn/
+.vscode/
 migrate_working_dir/
 
 # IntelliJ related
@@ -27,3 +29,4 @@ migrate_working_dir/
 **/doc/api/
 .dart_tool/
 build/
+test/

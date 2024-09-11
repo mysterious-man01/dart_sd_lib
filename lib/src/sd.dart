@@ -1,9 +1,10 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:dart_sd_lib/bind/stable_diffusion.dart';
+import '../../bind/stable_diffusion.dart';
 import 'package:ffi/ffi.dart';
-import 'package:flutter/material.dart';
+import 'package:image/image.dart';
 
 class Sd {
   static stable_diffusion? _lib;
@@ -11,18 +12,20 @@ class Sd {
   // Pointer to sd instance
   late Pointer<sd_ctx_t> sdCtx;
 
+  static String? libPath;
+
   /// Getter for the Llama library.
   /// Loads the library based on the current platform
   stable_diffusion get lib{
     if(Platform.isAndroid || Platform.isLinux){
       _lib = stable_diffusion(DynamicLibrary.open('sdlib.so'));
     }
-    /*else if(libPath != null && File(libPath!).existsSync()){
+    else if(libPath != null && File(libPath!).existsSync()){
       _lib = stable_diffusion(DynamicLibrary.open(libPath!));
     }
     else{
         _lib = stable_diffusion(DynamicLibrary.process());
-    }*/
+    }
 
     return _lib!;
   }
@@ -96,9 +99,9 @@ class Sd {
   }
 
   /// Generate image
-  MemoryImage generate(String prompt,
+  Image generate(String prompt,
     {String negativePrompt = '',
-      dynamic fromImg,
+      Image? fromImg,
       double strenght = 0.8,
       int clipSkip = 1,
       double cfgScale = 7,
@@ -114,17 +117,19 @@ class Sd {
       bool normalizeInput = true,
       String inputIdImagesPath = '',
     }){
-    if(controlCond != null){
-      controlCond = nullptr;
-    }
+    controlCond ??= nullptr;
 
     Pointer<sd_image_t> result = nullptr;
-    MemoryImage img;
+    Uint8List rawImg;
+    Image img;
     
     if(fromImg != null){
+      // Convert Image to Uint8List and send as sd_image_t
+      sd_image_t? initImg = toSdImage(fromImg);
+
       result = lib.img2img(
         sdCtx,
-        fromImg,
+        initImg,
         prompt.toNativeUtf8().cast<Char>(),
         negativePrompt.toNativeUtf8().cast<Char>(),
         clipSkip,
@@ -164,12 +169,32 @@ class Sd {
       );
     }
 
-    int size = sizeOf<UnsignedChar>() * result.ref.channel * result.ref.width * result.ref.height;
-    
-    img = MemoryImage(result.ref.data.asTypedList(size));
-    
-    malloc.free(result);
+    int size = sizeOf<Uint8>() * result.ref.channel * result.ref.width * result.ref.height;
+
+    rawImg = result.ref.data.asTypedList(size);
+
+    img = Image.fromBytes(
+      width: result.ref.width,
+      height: result.ref.height,
+      numChannels: result.ref.channel,
+      bytes: rawImg.buffer
+    );
 
     return img;
+  }
+
+  ///Convert image to sd_image_t
+  sd_image_t toSdImage(Image img){
+    Pointer<sd_image_t> sdImg = malloc.allocate(sizeOf<sd_image_t>());
+    sdImg.ref.width = img.width;
+    sdImg.ref.height = img.height;
+    sdImg.ref.channel = img.numChannels;
+    sdImg.ref.data = malloc.allocate(sizeOf<Uint8>() * img.width * img.height * img.numChannels);
+    
+    for(int i=0; i < img.getBytes().length; i++){
+      sdImg.ref.data[i] = img.getBytes()[i];
+    }
+
+    return sdImg.ref;
   }
 }

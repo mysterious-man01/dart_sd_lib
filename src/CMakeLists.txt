@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.12)
 set(PROJECT_NAME "sdlib")
 project(${PROJECT_NAME})
 
-set(SD_BUILD_SHARED_LIBS ON)
+set(SD_BUILD_SHARED_LIBS ON CACHE BOOL "build shared libraries" FORCE)
+set(CMAKE_INSTALL_LIBDIR lib CACHE PATH "library install dir" FORCE)
 set(SD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Android" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
