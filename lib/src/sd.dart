@@ -44,7 +44,7 @@ class Sd {
     bool vaeDecodeOnly = false,
     bool vaeTiling = false,
     bool freeParamsImmediately = false,
-    int nThreads = 1,
+    int nThreads = 4,
     int wtype = 34,
     int rngType = 0,
     int schedule = 2,
@@ -99,7 +99,7 @@ class Sd {
   }
 
   /// Generate image
-  Image generate(String prompt,
+  Uint8List generate(String prompt,
     {String negativePrompt = '',
       Image? fromImg,
       double strenght = 0.8,
@@ -120,8 +120,6 @@ class Sd {
     controlCond ??= nullptr;
 
     Pointer<sd_image_t> result = nullptr;
-    Uint8List rawImg;
-    Image img;
     
     if(fromImg != null){
       // Convert Image to Uint8List and send as sd_image_t
@@ -169,18 +167,24 @@ class Sd {
       );
     }
 
-    int size = sizeOf<Uint8>() * result.ref.channel * result.ref.width * result.ref.height;
+    int size = sizeOf<Uint8>() * result.ref.channel * result.ref.width * result.ref.height;    
 
-    rawImg = result.ref.data.asTypedList(size);
+    return result.ref.data.asTypedList(size);
+  }
 
-    img = Image.fromBytes(
-      width: result.ref.width,
-      height: result.ref.height,
-      numChannels: result.ref.channel,
-      bytes: rawImg.buffer
-    );
-
-    return img;
+  /// Convert Uint8List to Image
+  Image? toImage(Uint8List data, int width, int height, int channels){
+    try{
+      return Image.fromBytes(
+        width: width,
+        height: height,
+        numChannels: channels,
+        bytes: data.buffer
+      );
+    } catch(e){
+      Exception(e);
+      return null;
+    }
   }
 
   ///Convert image to sd_image_t
